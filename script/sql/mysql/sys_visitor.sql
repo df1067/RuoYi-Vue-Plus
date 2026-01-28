@@ -1,0 +1,21 @@
+CREATE TABLE `sys_visitor` (
+  `visitor_id` bigint NOT NULL AUTO_INCREMENT COMMENT '访客ID',
+  `visitor_name` varchar(50) NOT NULL COMMENT '访客姓名',
+  `phone` varchar(11) NOT NULL COMMENT '联系电话',
+  `reason` varchar(200) NOT NULL COMMENT '访问事由',
+  `dept_id` bigint NOT NULL COMMENT '预约部门ID',
+  `visit_time` datetime NOT NULL COMMENT '预约到访时间',
+  `actual_visit_time` datetime DEFAULT NULL COMMENT '实际到访时间',
+  `actual_leave_time` datetime DEFAULT NULL COMMENT '实际离开时间',
+  `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0：预约中 1：已到访 2：已离开）',
+  `remark` varchar(200) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) NOT NULL DEFAULT '' COMMENT '创建者',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `tenant_id` bigint NOT NULL DEFAULT '0' COMMENT '租户ID',
+  PRIMARY KEY (`visitor_id`),
+  KEY `idx_dept_id` (`dept_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_visit_time` (`visit_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='访客登记表';
