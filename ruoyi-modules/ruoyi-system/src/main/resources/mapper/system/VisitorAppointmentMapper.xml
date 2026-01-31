@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.system.mapper.VisitorAppointmentMapper">
+
+    <resultMap type="org.dromara.system.domain.vo.VisitorAppointmentVo" id="VisitorAppointmentResult">
+        <id property="appointmentId" column="appointment_id"/>
+        <result property="visitorName" column="visitor_name"/>
+        <result property="visitorPhone" column="visitor_phone"/>
+        <result property="visitorIdCard" column="visitor_id_card"/>
+        <result property="visitorCompany" column="visitor_company"/>
+        <result property="visitPurpose" column="visit_purpose"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="contactUserId" column="contact_user_id"/>
+        <result property="contactUserName" column="contact_user_name"/>
+        <result property="contactNickName" column="contact_nick_name"/>
+        <result property="appointmentStartTime" column="appointment_start_time"/>
+        <result property="appointmentEndTime" column="appointment_end_time"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createByName" column="create_by_name"/>
+        <result property="createByNickName" column="create_by_nick_name"/>
+        <result property="confirmBy" column="confirm_by"/>
+        <result property="confirmByName" column="confirm_by_name"/>
+        <result property="confirmByNickName" column="confirm_by_nick_name"/>
+        <result property="confirmTime" column="confirm_time"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="updateBy" column="update_by"/>
+    </resultMap>
+
+    <sql id="selectVisitorAppointmentVo">
+        select va.appointment_id, va.visitor_name, va.visitor_phone, va.visitor_id_card, va.visitor_company,
+               va.visit_purpose, va.dept_id, d.dept_name, va.contact_user_id, 
+               u1.user_name as contact_user_name, u1.nick_name as contact_nick_name,
+               va.appointment_start_time, va.appointment_end_time, va.status,
+               va.create_by, u2.user_name as create_by_name, u2.nick_name as create_by_nick_name,
+               va.confirm_by, u3.user_name as confirm_by_name, u3.nick_name as confirm_by_nick_name,
+               va.confirm_time, va.reject_reason, va.remark, va.create_time, va.update_time
+        from visitor_appointment va
+        left join sys_dept d on va.dept_id = d.dept_id
+        left join sys_user u1 on va.contact_user_id = u1.user_id
+        left join sys_user u2 on va.create_by = u2.user_id
+        left join sys_user u3 on va.confirm_by = u3.user_id
+    </sql>
+
+</mapper>
