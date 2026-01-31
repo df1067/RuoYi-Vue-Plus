@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.system.mapper.VisitorAppointmentMapper">
+
+    <resultMap type="org.dromara.system.domain.vo.VisitorAppointmentVo" id="VisitorAppointmentResult">
+        <result property="appointmentId" column="appointment_id"/>
+        <result property="visitorName" column="visitor_name"/>
+        <result property="visitorPhone" column="visitor_phone"/>
+        <result property="visitorIdCard" column="visitor_id_card"/>
+        <result property="visitReason" column="visit_reason"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="contactUserId" column="contact_user_id"/>
+        <result property="contactUserName" column="contact_user_name"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="status" column="status"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectVisitorAppointmentVo">
+        select appointment_id, visitor_name, visitor_phone, visitor_id_card, visit_reason, dept_id, dept_name, contact_user_id, contact_user_name, start_time, end_time, status, reject_reason, create_by, create_time, update_by, update_time, remark from sys_visitor_appointment
+    </sql>
+
+    <select id="selectVisitorAppointmentList" parameterType="org.dromara.system.domain.bo.VisitorAppointmentBo" resultMap="VisitorAppointmentResult">
+        <include refid="selectVisitorAppointmentVo"/>
+        <where>
+            <if test="bo.visitorName != null and bo.visitorName != ''">
+                and visitor_name like concat('%', #{bo.visitorName}, '%')
+            </if>
+            <if test="bo.deptId != null">
+                and dept_id = #{bo.deptId}
+            </if>
+            <if test="bo.status != null and bo.status != ''">
+                and status = #{bo.status}
+            </if>
+            <if test="bo.startTimeRangeStart != null">
+                and start_time >= #{bo.startTimeRangeStart}
+            </if>
+            <if test="bo.startTimeRangeEnd != null">
+                and start_time <= #{bo.startTimeRangeEnd}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectVisitorAppointmentPage" parameterType="org.dromara.system.domain.bo.VisitorAppointmentBo" resultMap="VisitorAppointmentResult">
+        <include refid="selectVisitorAppointmentVo"/>
+        <where>
+            <if test="bo.visitorName != null and bo.visitorName != ''">
+                and visitor_name like concat('%', #{bo.visitorName}, '%')
+            </if>
+            <if test="bo.deptId != null">
+                and dept_id = #{bo.deptId}
+            </if>
+            <if test="bo.status != null and bo.status != ''">
+                and status = #{bo.status}
+            </if>
+            <if test="bo.startTimeRangeStart != null">
+                and start_time >= #{bo.startTimeRangeStart}
+            </if>
+            <if test="bo.startTimeRangeEnd != null">
+                and start_time <= #{bo.startTimeRangeEnd}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="countConflictByVisitorPhone" resultType="int">
+        select count(1) from sys_visitor_appointment
+        where visitor_phone = #{visitorPhone}
+          and status in ('0', '1')
+          and (
+              (start_time < #{endTime} and end_time > #{startTime})
+          )
+          <if test="excludeAppointmentId != null">
+              and appointment_id != #{excludeAppointmentId}
+          </if>
+    </select>
+
+    <select id="countConflictByContactUserId" resultType="int">
+        select count(1) from sys_visitor_appointment
+        where contact_user_id = #{contactUserId}
+          and status in ('0', '1')
+          and (
+              (start_time < #{endTime} and end_time > #{startTime})
+          )
+          <if test="excludeAppointmentId != null">
+              and appointment_id != #{excludeAppointmentId}
+          </if>
+    </select>
+
+</mapper>
