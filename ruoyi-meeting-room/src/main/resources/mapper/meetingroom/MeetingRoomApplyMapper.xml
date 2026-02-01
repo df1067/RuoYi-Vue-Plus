@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.meetingroom.mapper.MeetingRoomApplyMapper">
+
+    <resultMap type="MeetingRoomApply" id="MeetingRoomApplyResult">
+        <id property="applyId" column="apply_id"/>
+        <result property="roomId" column="room_id"/>
+        <result property="applyUserId" column="apply_user_id"/>
+        <result property="applyDeptId" column="apply_dept_id"/>
+        <result property="applyTime" column="apply_time"/>
+        <result property="meetingDate" column="meeting_date"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="meetingTopic" column="meeting_topic"/>
+        <result property="participantCount" column="participant_count"/>
+        <result property="participantList" column="participant_list"/>
+        <result property="status" column="status"/>
+        <result property="deptApproverId" column="dept_approver_id"/>
+        <result property="deptApproveTime" column="dept_approve_time"/>
+        <result property="deptApproveOpinion" column="dept_approve_opinion"/>
+        <result property="adminApproverId" column="admin_approver_id"/>
+        <result property="adminApproveTime" column="admin_approve_time"/>
+        <result property="adminApproveOpinion" column="admin_approve_opinion"/>
+        <result property="cancelTime" column="cancel_time"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createDept" column="create_dept"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectMeetingRoomApplyVo">
+        select apply_id, room_id, apply_user_id, apply_dept_id, apply_time, meeting_date, start_time, end_time, meeting_topic, participant_count, participant_list, status, dept_approver_id, dept_approve_time, dept_approve_opinion, admin_approver_id, admin_approve_time, admin_approve_opinion, cancel_time, cancel_reason, del_flag, create_dept, create_by, create_time, update_by, update_time, remark from meeting_room_apply
+    </sql>
+
+    <select id="selectMeetingRoomApplyList" parameterType="MeetingRoomApplyBo" resultMap="MeetingRoomApplyResult">
+        <include refid="selectMeetingRoomApplyVo"/>
+        <where>
+            <if test="roomId != null"> and room_id = #{roomId}</if>
+            <if test="applyUserId != null"> and apply_user_id = #{applyUserId}</if>
+            <if test="applyDeptId != null"> and apply_dept_id = #{applyDeptId}</if>
+            <if test="meetingDate != null"> and meeting_date = #{meetingDate}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="delFlag != null and delFlag != ''"> and del_flag = #{delFlag}</if>
+        </where>
+        order by apply_time desc
+    </select>
+
+    <select id="selectMeetingRoomApplyById" parameterType="Long" resultMap="MeetingRoomApplyResult">
+        <include refid="selectMeetingRoomApplyVo"/>
+        where apply_id = #{applyId}
+    </select>
+
+    <select id="checkTimeConflict" parameterType="Map" resultType="int">
+        select count(1) from meeting_room_apply
+        where room_id = #{roomId}
+          and meeting_date = #{meetingDate}
+          and status not in ('5', '6') -- 排除已拒绝和已取消的申请
+          and (
+              (start_time < #{endTime} and end_time > #{startTime})
+          )
+          <if test="applyId != null"> and apply_id != #{applyId}</if>
+    </select>
+
+    <select id="countPendingApplies" parameterType="Long" resultType="int">
+        select count(1) from meeting_room_apply
+        where apply_user_id = #{userId}
+          and status in ('1', '2', '3') -- 待审批的状态：已提交、部门审核中、行政复核中
+          and del_flag = '0'
+    </select>
+
+    <select id="countWeeklySuccessRate" parameterType="Map" resultType="org.dromara.meetingroom.domain.vo.MeetingRoomApplyVo">
+        select
+            mr.room_type as roomType,
+            count(mra.apply_id) as totalApplies,
+            sum(case when mra.status = '4' then 1 else 0 end) as approvedApplies,
+            case when count(mra.apply_id) = 0 then 0 else sum(case when mra.status = '4' then 1 else 0 end) * 100.0 / count(mra.apply_id) end as successRate
+        from meeting_room_apply mra
+        left join meeting_room mr on mra.room_id = mr.room_id
+        where mra.create_time between #{startDate} and #{endDate}
+          and mra.del_flag = '0'
+        group by mr.room_type
+    </select>
+
+</mapper>
