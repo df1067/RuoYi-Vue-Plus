@@ -1,0 +1,10 @@
+# 多功能厅预约模块配置
+meeting:
+  # 最大待审批预约数量
+  max-pending-appointments: 2
+  # 大型厅24小时内不可取消
+  large-room-cancel-restriction: true
+  # 审批级别配置
+  approval-levels:
+    dept: 1    # 部门审批
+    admin: 2   # 行政审批
