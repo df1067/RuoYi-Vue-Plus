@@ -19,6 +19,8 @@ import org.dromara.meetingroom.domain.vo.MeetingRoomApplyVo;
 import org.dromara.meetingroom.mapper.MeetingRoomApplyMapper;
 import org.dromara.meetingroom.mapper.MeetingRoomMapper;
 import org.dromara.meetingroom.service.IMeetingRoomApplyService;
+import org.dromara.system.service.ISysUserService;
+import org.dromara.system.service.ISysDeptService;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -35,6 +37,8 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
 
     private final MeetingRoomApplyMapper baseMapper;
     private final MeetingRoomMapper meetingRoomMapper;
+    private final ISysUserService userService;
+    private final ISysDeptService deptService;
 
     @Override
     public MeetingRoomApplyVo selectMeetingRoomApplyById(Long applyId) {
@@ -74,7 +78,7 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
         checkTimeConflict(meetingRoomApplyBo);
 
         // 检查用户待审批的预约数量
-        checkPendingApplies(LoginHelper.getUserId());
+        checkPendingApplies(LoginHelper.getUserId(), meetingRoomApplyBo.getMeetingDate(), meetingRoomApplyBo.getStartTime(), meetingRoomApplyBo.getEndTime(), null);
 
         MeetingRoomApply meetingRoomApply = BeanUtil.toBean(meetingRoomApplyBo, MeetingRoomApply.class);
         meetingRoomApply.setApplyUserId(LoginHelper.getUserId());
@@ -88,6 +92,9 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
     public int updateMeetingRoomApply(MeetingRoomApplyBo meetingRoomApplyBo) {
         // 检查时间冲突
         checkTimeConflict(meetingRoomApplyBo);
+
+        // 检查用户待审批的预约数量
+        checkPendingApplies(LoginHelper.getUserId(), meetingRoomApplyBo.getMeetingDate(), meetingRoomApplyBo.getStartTime(), meetingRoomApplyBo.getEndTime(), meetingRoomApplyBo.getApplyId());
 
         MeetingRoomApply meetingRoomApply = BeanUtil.toBean(meetingRoomApplyBo, MeetingRoomApply.class);
         return baseMapper.updateById(meetingRoomApply);
@@ -118,9 +125,15 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
         checkTimeConflict(meetingRoomApplyBo);
 
         // 检查用户待审批的预约数量
-        checkPendingApplies(LoginHelper.getUserId());
+        checkPendingApplies(LoginHelper.getUserId(), meetingRoomApply.getMeetingDate(), meetingRoomApply.getStartTime(), meetingRoomApply.getEndTime(), meetingRoomApply.getApplyId());
 
-        meetingRoomApply.setStatus("1"); // 状态变为已提交
+        meetingRoomApply.setStatus("2"); // 状态变为部门审核中
+        // 设置部门审核人为当前部门的负责人
+        Long deptId = meetingRoomApply.getApplyDeptId();
+        SysDeptVo dept = deptService.selectDeptById(deptId);
+        if (dept != null) {
+            meetingRoomApply.setDeptApproverId(dept.getLeader());
+        }
         return baseMapper.updateById(meetingRoomApply);
     }
 
@@ -131,6 +144,11 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
             throw new ServiceException("预约申请不存在");
         }
 
+        // 检查当前用户是否为部门审核人
+        if (!LoginHelper.getUserId().equals(meetingRoomApply.getDeptApproverId())) {
+            throw new ServiceException("您不是该预约申请的部门审核人");
+        }
+
         meetingRoomApply.setDeptApproverId(LoginHelper.getUserId());
         meetingRoomApply.setDeptApproveTime(new Date());
         meetingRoomApply.setDeptApproveOpinion(approveOpinion);
@@ -138,6 +156,12 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
         if ("0".equals(approveStatus)) {
             // 部门审核通过，状态变为行政复核中
             meetingRoomApply.setStatus("3");
+            // 设置行政复核人为行政部人员（这里需要根据实际权限体系进行设置）
+            // 示例中假设行政部的部门ID为106
+            List<SysUserVo> adminUsers = userService.selectUserListByDept(106L);
+            if (CollUtil.isNotEmpty(adminUsers)) {
+                meetingRoomApply.setAdminApproverId(adminUsers.get(0).getUserId());
+            }
         } else {
             // 部门审核拒绝，流程终止
             meetingRoomApply.setStatus("5");
@@ -151,6 +175,11 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
         MeetingRoomApply meetingRoomApply = baseMapper.selectById(applyId);
         if (meetingRoomApply == null) {
             throw new ServiceException("预约申请不存在");
+        }
+
+        // 检查当前用户是否为行政复核人
+        if (!LoginHelper.getUserId().equals(meetingRoomApply.getAdminApproverId())) {
+            throw new ServiceException("您不是该预约申请的行政复核人");
         }
 
         meetingRoomApply.setAdminApproverId(LoginHelper.getUserId());
@@ -208,8 +237,23 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
         MeetingRoom meetingRoom = meetingRoomMapper.selectById(roomId);
         if (meetingRoom != null && "1".equals(meetingRoom.getRoomType())) {
             // 大型厅仅限部门总监及以上权限人员申请
+            Long userId = LoginHelper.getUserId();
+            Long deptId = LoginHelper.getDeptId();
+            
+            // 检查用户是否为部门总监及以上
+            boolean isDirector = false;
             // 这里需要根据实际权限体系进行校验，示例中假设部门总监的角色ID为2
-            if (!LoginHelper.isSuperAdmin() && !LoginHelper.hasRole("2")) {
+            if (LoginHelper.isSuperAdmin() || LoginHelper.hasRole("2")) {
+                isDirector = true;
+            }
+            
+            // 检查用户是否为当前部门的负责人
+            SysDeptVo dept = deptService.selectDeptById(deptId);
+            if (dept != null && userId.equals(dept.getLeader())) {
+                isDirector = true;
+            }
+            
+            if (!isDirector) {
                 throw new ServiceException("大型厅仅限部门总监及以上权限人员申请");
             }
         }
@@ -231,9 +275,13 @@ public class MeetingRoomApplyServiceImpl extends ServiceImpl<MeetingRoomApplyMap
      * 检查用户待审批的预约数量
      *
      * @param userId 用户ID
+     * @param meetingDate 会议日期
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param applyId 申请ID（更新时排除自身）
      */
-    private void checkPendingApplies(Long userId) {
-        int pendingCount = baseMapper.countPendingApplies(userId);
+    private void checkPendingApplies(Long userId, Date meetingDate, Date startTime, Date endTime, Long applyId) {
+        int pendingCount = baseMapper.countOverlappingPendingApplies(userId, meetingDate, startTime, endTime, applyId);
         if (pendingCount >= 2) {
             throw new ServiceException("同一用户在同一时间段内，最多只能有2个待审批的预约");
         }
