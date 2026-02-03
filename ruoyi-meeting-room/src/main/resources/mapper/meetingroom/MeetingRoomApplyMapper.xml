@@ -72,6 +72,18 @@
           and del_flag = '0'
     </select>
 
+    <select id="countOverlappingPendingApplies" parameterType="Map" resultType="int">
+        select count(1) from meeting_room_apply
+        where apply_user_id = #{userId}
+          and status in ('1', '2', '3') -- 待审批的状态：已提交、部门审核中、行政复核中
+          and del_flag = '0'
+          and meeting_date = #{meetingDate}
+          and (
+              (start_time < #{endTime} and end_time > #{startTime})
+          )
+          <if test="applyId != null"> and apply_id != #{applyId}</if>
+    </select>
+
     <select id="countWeeklySuccessRate" parameterType="Map" resultType="org.dromara.meetingroom.domain.vo.MeetingRoomApplyVo">
         select
             mr.room_type as roomType,

@@ -36,6 +36,18 @@ public interface MeetingRoomApplyMapper extends BaseMapperPlus<MeetingRoomApply,
     int countPendingApplies(@Param("userId") Long userId);
 
     /**
+     * 查询用户在同一时间段内待审批的预约数量
+     *
+     * @param userId 用户ID
+     * @param meetingDate 会议日期
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param applyId 申请ID（更新时排除自身）
+     * @return 待审批的预约数量
+     */
+    int countOverlappingPendingApplies(@Param("userId") Long userId, @Param("meetingDate") Date meetingDate, @Param("startTime") Date startTime, @Param("endTime") Date endTime, @Param("applyId") Long applyId);
+
+    /**
      * 统计本周内各类会议室的预约成功率
      *
      * @param startDate 本周开始日期
